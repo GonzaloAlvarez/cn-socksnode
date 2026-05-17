@@ -29,15 +29,27 @@ cp .env.example .env
 ### 2. Start
 
 ```sh
-docker compose up -d
-docker compose logs -f tailnet-proxy   # opens a browser URL to authenticate via OIDC
+./run.sh                  # default — no exit-node, --accept-routes ON
+./run.sh --exit-lan       # tailnet exit-node = infra-exit (LAN egress)
+./run.sh --exit-mullvad   # tailnet exit-node = infra-mullvad (Mullvad egress)
+./run.sh --status         # show current prefs
 ```
+
+First run will print a Headscale auth URL — visit it once to authorize the node.
 
 Verify the tailscale0 interface was created (kernel mode is required for DNS to work):
 
 ```sh
 docker exec cn-socksnode-tailnet-proxy-1 ip addr show tailscale0
 ```
+
+### What each mode does
+
+| Mode | What changes | When to use |
+|---|---|---|
+| default | no tailnet exit-node; `--accept-routes` enabled | every-day SOCKS5/HTTP-CONNECT into the tailnet, *and* into the home LAN supernets advertised by `infra-exit` (10.0.0.0/24, 10.1.0.0/16, 10.120.22.0/24). Public internet uses the Mac's local egress. |
+| `--exit-lan` | `tailscale set --exit-node=infra-exit --exit-node-allow-lan-access` | when you want this node's *non-tailnet* traffic to leave through the home WAN (e.g. the Mac is on hotel Wi-Fi and you want geo-locating to think you're home). Tailscale's built-in SOCKS5 doesn't fully reroute through exit nodes — for that case, set the exit node on the OS-level tailscale client instead. |
+| `--exit-mullvad` | `tailscale set --exit-node=infra-mullvad` | when you want egress via Mullvad. Same exit-node-routing caveat applies to the built-in SOCKS5. |
 
 ## Configuring applications to use the proxy
 
